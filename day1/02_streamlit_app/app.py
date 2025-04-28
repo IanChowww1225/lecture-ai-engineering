@@ -9,9 +9,16 @@ import torch
 from transformers import pipeline
 from config import MODEL_NAME
 from huggingface_hub import HfFolder
+from database import Database
+from llm import LLM
+import time
 
 # --- アプリケーション設定 ---
-st.set_page_config(page_title="Gemma Chatbot", layout="wide")
+st.set_page_config(
+    page_title="AI 聊天助手",
+    page_icon="🤖",
+    layout="wide"
+)
 
 # --- 初期化処理 ---
 # NLTKデータのダウンロード（初回起動時など）
@@ -45,6 +52,15 @@ def load_model():
         return None
 pipe = llm.load_model()
 
+# 初始化
+@st.cache_resource
+def init_database():
+    return Database("chat_history.db")
+
+@st.cache_resource
+def init_llm():
+    return LLM()
+
 # --- Streamlit アプリケーション ---
 st.title("🤖 Gemma 2 Chatbot with Feedback")
 st.write("Gemmaモデルを使用したチャットボットです。回答に対してフィードバックを行えます。")
@@ -64,6 +80,14 @@ page = st.sidebar.radio(
     on_change=lambda: setattr(st.session_state, 'page', st.session_state.page_selector) # 選択変更時に状態を更新
 )
 
+# 侧边栏
+with st.sidebar:
+    st.title("设置")
+    st.write("模型信息:", llm.get_model_info())
+    
+    if st.button("清除聊天历史"):
+        if db.clear_db():
+            st.success("聊天历史已清除")
 
 # --- メインコンテンツ ---
 if st.session_state.page == "チャット":
@@ -79,3 +103,46 @@ elif st.session_state.page == "サンプルデータ管理":
 # --- フッターなど（任意） ---
 st.sidebar.markdown("---")
 st.sidebar.info("開発者: [Your Name]")
+
+# 聊天界面
+if "messages" not in st.session_state:
+    st.session_state.messages = []
+
+# 显示聊天历史
+for message in st.session_state.messages:
+    with st.chat_message(message["role"]):
+        st.markdown(message["content"])
+
+# 用户输入
+if prompt := st.chat_input("请输入您的问题"):
+    # 添加用户消息
+    st.session_state.messages.append({"role": "user", "content": prompt})
+    with st.chat_message("user"):
+        st.markdown(prompt)
+
+    # 生成回复
+    with st.chat_message("assistant"):
+        message_placeholder = st.empty()
+        full_response = ""
+        
+        # 显示加载动画
+        with st.spinner("思考中..."):
+            response = llm.generate_response(prompt)
+            
+        # 保存到数据库
+        db.add_chat(prompt, response)
+        
+        # 显示回复
+        message_placeholder.markdown(response)
+        st.session_state.messages.append({"role": "assistant", "content": response})
+
+# 显示聊天历史
+st.sidebar.title("聊天历史")
+history = db.get_chat_history()
+for chat in history:
+    with st.sidebar.expander(f"对话 {chat[0]}"):
+        st.write("时间:", chat[1])
+        st.write("用户:", chat[2])
+        st.write("助手:", chat[3])
+        if chat[4] is not None:
+            st.write("反馈:", "👍" if chat[4] == 1 else "👎")

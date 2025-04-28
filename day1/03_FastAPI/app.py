@@ -1,6 +1,6 @@
 import os
 import torch
-from transformers import pipeline
+from transformers import pipeline, AutoModelForCausalLM, AutoTokenizer
 import time
 import traceback
 from fastapi import FastAPI, HTTPException, BackgroundTasks
@@ -10,6 +10,10 @@ from typing import Optional, List, Dict, Any
 import uvicorn
 import nest_asyncio
 from pyngrok import ngrok
+from dotenv import load_dotenv
+
+# 加载环境变量
+load_dotenv()
 
 # --- 設定 ---
 # モデル名を設定
@@ -25,8 +29,8 @@ config = Config(MODEL_NAME)
 
 # --- FastAPIアプリケーション定義 ---
 app = FastAPI(
-    title="ローカルLLM APIサービス",
-    description="transformersモデルを使用したテキスト生成のためのAPI",
+    title="LLM API",
+    description="使用 FastAPI 提供的 LLM API 服务",
     version="1.0.0"
 )
 
@@ -59,22 +63,26 @@ class GenerationResponse(BaseModel):
 # --- モデル関連の関数 ---
 # モデルのグローバル変数
 model = None
+tokenizer = None
 
 def load_model():
     """推論用のLLMモデルを読み込む"""
-    global model  # グローバル変数を更新するために必要
+    global model, tokenizer
     try:
         device = "cuda" if torch.cuda.is_available() else "cpu"
         print(f"使用デバイス: {device}")
-        pipe = pipeline(
-            "text-generation",
-            model=config.MODEL_NAME,
-            model_kwargs={"torch_dtype": torch.bfloat16},
-            device=device
+        tokenizer = AutoTokenizer.from_pretrained(
+            config.MODEL_NAME,
+            token=os.getenv("HUGGINGFACE_TOKEN")
+        )
+        model = AutoModelForCausalLM.from_pretrained(
+            config.MODEL_NAME,
+            token=os.getenv("HUGGINGFACE_TOKEN"),
+            torch_dtype=torch.float16,
+            device_map="auto"
         )
         print(f"モデル '{config.MODEL_NAME}' の読み込みに成功しました")
-        model = pipe  # グローバル変数を更新
-        return pipe
+        return model
     except Exception as e:
         error_msg = f"モデル '{config.MODEL_NAME}' の読み込みに失敗: {e}"
         print(error_msg)
@@ -205,9 +213,9 @@ def load_model_task():
     global model
     print("load_model_task: モデルの読み込みを開始...")
     # load_model関数を呼び出し、結果をグローバル変数に設定
-    loaded_pipe = load_model()
-    if loaded_pipe:
-        model = loaded_pipe  # グローバル変数を更新
+    loaded_model = load_model()
+    if loaded_model:
+        model = loaded_model  # グローバル変数を更新
         print("load_model_task: モデルの読み込みが完了しました。")
     else:
         print("load_model_task: モデルの読み込みに失敗しました。")

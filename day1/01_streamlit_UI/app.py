@@ -2,27 +2,28 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import time
+import plotly.express as px
 
 # ============================================
 # ページ設定
 # ============================================
-# st.set_page_config(
-#     page_title="Streamlit デモ",
-#     layout="wide",
-#     initial_sidebar_state="expanded"
-# )
+st.set_page_config(
+    page_title="Streamlit UI 演示",
+    page_icon="✨",
+    layout="wide"
+)
 
 # ============================================
 # タイトルと説明
 # ============================================
-st.title("Streamlit 初心者向けデモ")
+st.title("Streamlit UI 元素演示")
 st.markdown("### コメントを解除しながらStreamlitの機能を学びましょう")
 st.markdown("このデモコードでは、コメントアウトされた部分を順番に解除しながらUIの変化を確認できます。")
 
 # ============================================
 # サイドバー 
 # ============================================
-st.sidebar.header("デモのガイド")
+st.sidebar.header("侧边栏设置")
 st.sidebar.info("コードのコメントを解除して、Streamlitのさまざまな機能を確認しましょう。")
 
 # ============================================
@@ -32,8 +33,8 @@ st.header("基本的なUI要素")
 
 # テキスト入力
 st.subheader("テキスト入力")
-name = st.text_input("あなたの名前", "ゲスト")
-st.write(f"こんにちは、{name}さん！")
+name = st.text_input("请输入您的名字", "访客")
+st.write(f"欢迎, {name}!")
 
 # ボタン
 # st.subheader("ボタン")
@@ -201,3 +202,69 @@ st.code("""
 if st.button("クリックしてください"):
     st.success("ボタンがクリックされました！")
 """)
+
+# 创建两列布局
+col1, col2 = st.columns(2)
+
+with col1:
+    st.subheader("数据展示")
+    # 创建示例数据
+    data = pd.DataFrame(
+        np.random.randn(20, 3),
+        columns=['A', 'B', 'C']
+    )
+    st.dataframe(data)
+    
+    # 折线图
+    st.line_chart(data)
+
+with col2:
+    st.subheader("交互式图表")
+    # 散点图
+    fig = px.scatter(data, x='A', y='B', title='散点图示例')
+    st.plotly_chart(fig)
+    
+    # 柱状图
+    st.bar_chart(data)
+
+# 底部区域
+st.header("其他UI元素")
+
+# 复选框
+if st.checkbox("显示更多内容"):
+    st.write("这是更多内容...")
+
+# 单选按钮
+option = st.radio(
+    "选择您喜欢的编程语言",
+    ["Python", "Java", "JavaScript"]
+)
+st.write(f"您选择了: {option}")
+
+# 多选框
+options = st.multiselect(
+    "选择您使用的开发工具",
+    ["VS Code", "PyCharm", "Jupyter", "Git"]
+)
+st.write("您选择的工具:", options)
+
+# 文件上传
+uploaded_file = st.file_uploader("上传文件", type=['csv', 'txt'])
+if uploaded_file is not None:
+    st.write("文件上传成功!")
+
+# 按钮
+if st.button("点击我"):
+    st.balloons()
+    st.success("操作成功！")
+
+# 进度条
+progress_bar = st.progress(0)
+for i in range(100):
+    progress_bar.progress(i + 1)
+
+# 警告和错误信息
+st.warning("这是一个警告消息")
+st.error("这是一个错误消息")
+st.info("这是一个信息消息")
+st.success("这是一个成功消息")

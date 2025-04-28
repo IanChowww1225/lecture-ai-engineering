@@ -1,10 +1,10 @@
 # llm.py
 import os
 import torch
-from transformers import pipeline
+from transformers import pipeline, AutoModelForCausalLM, AutoTokenizer
 import streamlit as st
 import time
-from config import MODEL_NAME
+from config import MODEL_NAME, HUGGINGFACE_TOKEN, TEMPERATURE, MAX_LENGTH
 from huggingface_hub import login
 
 # モデルをキャッシュして再利用
@@ -12,7 +12,6 @@ from huggingface_hub import login
 def load_model():
     """LLMモデルをロードする"""
     try:
-
         # アクセストークンを保存
         hf_token = st.secrets["huggingface"]["token"]
         
@@ -85,3 +84,51 @@ def generate_response(pipe, user_question):
         import traceback
         traceback.print_exc()
         return f"エラーが発生しました: {str(e)}", 0
+
+class LLM:
+    def __init__(self):
+        self.model = None
+        self.tokenizer = None
+        self.load_model()
+
+    def load_model(self):
+        """加载模型和分词器"""
+        try:
+            self.tokenizer = AutoTokenizer.from_pretrained(
+                MODEL_NAME,
+                token=HUGGINGFACE_TOKEN
+            )
+            self.model = AutoModelForCausalLM.from_pretrained(
+                MODEL_NAME,
+                token=HUGGINGFACE_TOKEN,
+                torch_dtype=torch.float16,
+                device_map="auto"
+            )
+        except Exception as e:
+            raise Exception(f"模型加载失败: {str(e)}")
+
+    def generate_response(self, prompt):
+        """生成回复"""
+        try:
+            inputs = self.tokenizer(prompt, return_tensors="pt").to(self.model.device)
+            
+            outputs = self.model.generate(
+                **inputs,
+                max_length=MAX_LENGTH,
+                temperature=TEMPERATURE,
+                do_sample=True,
+                pad_token_id=self.tokenizer.eos_token_id
+            )
+            
+            response = self.tokenizer.decode(outputs[0], skip_special_tokens=True)
+            return response
+        except Exception as e:
+            raise Exception(f"生成回复失败: {str(e)}")
+
+    def get_model_info(self):
+        """获取模型信息"""
+        return {
+            "name": MODEL_NAME,
+            "temperature": TEMPERATURE,
+            "max_length": MAX_LENGTH
+        }

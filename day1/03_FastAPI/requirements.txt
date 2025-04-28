@@ -1,8 +1,11 @@
-fastapi
-uvicorn
-pydantic
-transformers
+fastapi>=0.68.0
+uvicorn>=0.15.0
+pydantic>=1.8.2
+transformers>=4.11.0
 accelerate
 sentencepiece
 protobuf
 pyngrok
+torch>=1.9.0
+python-dotenv>=0.19.0
+requests>=2.26.0

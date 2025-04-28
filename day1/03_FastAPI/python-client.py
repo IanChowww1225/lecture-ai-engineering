@@ -5,6 +5,56 @@ import requests
 import json
 import time
 
+# API 配置
+API_URL = "http://localhost:8000"
+
+def generate_text(prompt: str, max_length: int = 1000, temperature: float = 0.7):
+    """生成文本"""
+    try:
+        response = requests.post(
+            f"{API_URL}/generate",
+            json={
+                "prompt": prompt,
+                "max_length": max_length,
+                "temperature": temperature
+            }
+        )
+        response.raise_for_status()
+        return response.json()
+    except requests.exceptions.RequestException as e:
+        print(f"请求失败: {str(e)}")
+        return None
+
+def check_health():
+    """检查服务健康状态"""
+    try:
+        response = requests.get(f"{API_URL}/health")
+        response.raise_for_status()
+        return response.json()
+    except requests.exceptions.RequestException as e:
+        print(f"健康检查失败: {str(e)}")
+        return None
+
+def main():
+    """主函数"""
+    # 检查服务健康状态
+    health = check_health()
+    if health:
+        print("服务状态:", health)
+    
+    # 测试生成
+    prompt = "请介绍一下人工智能的发展历史。"
+    result = generate_text(prompt)
+    
+    if result:
+        print("\n生成的文本:")
+        print(result["response"])
+        print("\n模型信息:")
+        print(json.dumps(result["model_info"], indent=2, ensure_ascii=False))
+
+if __name__ == "__main__":
+    main()
+
 class LLMClient:
     """LLM API クライアントクラス"""
     
